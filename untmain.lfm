@@ -1,0 +1,17 @@
+object frmMain: TfrmMain
+  Left = 325
+  Height = 647
+  Top = 148
+  Width = 955
+  Caption = 'frmMain'
+  Color = clBtnFace
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  LCLVersion = '1.8.0.3'
+  object ApplicationProperties: TApplicationProperties
+    OnIdle = ApplicationPropertiesIdle
+    left = 72
+    top = 32
+  end
+end
