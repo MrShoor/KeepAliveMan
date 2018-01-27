@@ -8,7 +8,11 @@ object frmMain: TfrmMain
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
-  LCLVersion = '1.8.0.3'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnMouseDown = FormMouseDown
+  OnPaint = FormPaint
+  LCLVersion = '1.8.0.1'
   object ApplicationProperties: TApplicationProperties
     OnIdle = ApplicationPropertiesIdle
     left = 72

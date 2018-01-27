@@ -17,7 +17,7 @@
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="KeepAliveMan"/>
+            <Filename Value="bin\KeepAliveMan"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
@@ -66,7 +66,7 @@
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="KeepAliveMan"/>
+            <Filename Value="bin\KeepAliveMan"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
@@ -116,7 +116,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="5">
       <Unit0>
         <Filename Value="KeepAliveMan.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -137,13 +137,18 @@
         <Filename Value="gWorld.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="avlights.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="avLights"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="KeepAliveMan"/>
+      <Filename Value="bin\KeepAliveMan"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

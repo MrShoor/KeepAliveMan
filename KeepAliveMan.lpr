@@ -11,7 +11,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, untMain
+  Forms, untMain, avLights
   { you can add units after this };
 
 {$R *.res}
