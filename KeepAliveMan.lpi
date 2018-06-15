@@ -116,7 +116,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="5">
+    <Units Count="8">
       <Unit0>
         <Filename Value="KeepAliveMan.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -142,6 +142,21 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="avLights"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="gtypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gTypes"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="glevel.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gLevel"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="gunit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gUnit"/>
+      </Unit7>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

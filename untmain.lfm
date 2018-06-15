@@ -12,7 +12,7 @@ object frmMain: TfrmMain
   OnDestroy = FormDestroy
   OnMouseDown = FormMouseDown
   OnPaint = FormPaint
-  LCLVersion = '1.8.0.1'
+  LCLVersion = '1.8.0.3'
   object ApplicationProperties: TApplicationProperties
     OnIdle = ApplicationPropertiesIdle
     left = 72

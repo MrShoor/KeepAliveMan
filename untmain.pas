@@ -19,11 +19,12 @@ uses
   Messages,
   {$EndIf}
   avRes, avTypes, mutils, avCameraController, avModel, avMesh, avTexLoader,
+  gWorld, gLevel,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus;
 
 const
   SHADERS_FROMRES = False;
-  SHADERS_DIR = 'C:\MyProj\KeepAliveMan\shaders\!Out';
+  SHADERS_DIR = 'D:\Projects\KeepAliveMan\shaders\!Out';
 
 type
   { TfrmMain }
@@ -41,16 +42,16 @@ type
     procedure FormMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FormPaint(Sender: TObject);
   private
+    FLastStepTime: Int64;
+
     FMain: TavMainRender;
     FFBO : TavFrameBuffer;
 
-    FProgModels: TavProgram;
+    FWorld: TGWorld;
+    FLevel: TGameLevel;
+
     FModelsCollection: TavModelCollection;
     FModels: IavModelInstanceArr;
-
-    FMapIrradiance: TavTexture;
-    FMapRadiance  : TavTexture;
-    FHammersleyPts: TVec4Arr;
   public
     {$IfDef FPC}
     procedure EraseBackground(DC: HDC); override;
@@ -58,6 +59,7 @@ type
     {$IfDef DCC}
     procedure WMEraseBkgnd(var Message: TWmEraseBkgnd); message WM_ERASEBKGND;
     {$EndIf}
+    procedure ProcessInput;
     procedure RenderScene;
     procedure DrawFrame;
   end;
@@ -78,8 +80,18 @@ implementation
 { TfrmMain }
 
 procedure TfrmMain.ApplicationPropertiesIdle(Sender: TObject; var Done: Boolean);
+var currTime: Int64;
 begin
   Done := False;
+  currTime := FMain.Time64;
+  while FLastStepTime + WORLD_TIMESTEP <= currTime do
+  begin
+    Inc(FLastStepTime, WORLD_TIMESTEP);
+    ProcessInput;
+    FWorld.UpdateStep;
+
+    FMain.InvalidateWindow;
+  end;
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
@@ -91,20 +103,8 @@ begin
 
   FFBO := Create_FrameBuffer(FMain, [TTextureFormat.RGBA, TTextureFormat.D32f], [True, False]);
 
-  FProgModels := TavProgram.Create(FMain);
-  FProgModels.Load('avMesh', SHADERS_FROMRES, SHADERS_DIR);
-
-  FModelsCollection := TavModelCollection.Create(FMain);
-  FModels := FModelsCollection.ObtainModels(avMesh.LoadInstancesFromFile('models\test1.avm'));
-
-  FMapIrradiance := TavTexture.Create(FMain);
-  FMapIrradiance.TargetFormat := TTextureFormat.RGBA16f;
-  FMapIrradiance.TexData := LoadTexture(ExtractFilePath(ParamStr(0))+'\EnvMaps\Campus_irradiance.dds');
-  FMapRadiance   := TavTexture.Create(FMain);
-  FMapRadiance.TargetFormat := TTextureFormat.RGBA16f;
-  FMapRadiance.TexData := LoadTexture(ExtractFilePath(ParamStr(0))+'\EnvMaps\Campus_radiance.dds');
-
-  FHammersleyPts := GenerateHammersleyPts(64);
+  FWorld := TGWorld.Create(FMain);
+  FLevel := TGameLevel0.Create(FWorld);
 
   with TavCameraController.Create(FMain) do
   begin
@@ -114,16 +114,20 @@ begin
     CanMove := True;
     CanRotate := True;
   end;
+
+  FLastStepTime := FMain.Time64;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  FreeAndNil(FLevel);
+  FreeAndNil(FWorld);
   FreeAndNil(FMain);
 end;
 
 procedure TfrmMain.FormMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  FProgModels.Invalidate();
+  FWorld.Res.ProgramMesh.Invalidate();
 end;
 
 procedure TfrmMain.FormPaint(Sender: TObject);
@@ -138,6 +142,11 @@ begin
 end;
 {$EndIf}
 
+procedure TfrmMain.ProcessInput;
+begin
+
+end;
+
 procedure TfrmMain.RenderScene;
 begin
   FMain.States.DepthTest := True;
@@ -148,13 +157,7 @@ begin
   FFBO.Clear(0, Vec(0,0,0,0));
   FFBO.ClearDS(1);
 
-  FProgModels.Select();
-  FProgModels.SetUniform('uRadiance', FMapRadiance, Sampler_Linear);
-  FProgModels.SetUniform('uIrradiance', FMapIrradiance, Sampler_Linear);
-  FProgModels.SetUniform('uHammersleyPts', FHammersleyPts);
-  FProgModels.SetUniform('uSamplesCount', Length(FHammersleyPts)*1.0);
-  FModelsCollection.Select;
-  FModelsCollection.Draw(FModels);
+  FWorld.Draw;
 
   FFBO.BlitToWindow();
 end;
