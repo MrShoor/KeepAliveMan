@@ -2,6 +2,7 @@
 #include "matrices.h"
 #include "lighting.h"
 #include "avModelMaterials.h"
+#include "clustered_lighting.h"
 
 struct VS_Input {
     float3 vsCoord   : vsCoord;
@@ -82,8 +83,30 @@ struct PS_Output {
 
 static const float LightInt = 3;
 
+float4 DebugTest(VS_Output In) {
+    float z = (In.vCoord.z - planesNearFar.x) / (planesNearFar.y - planesNearFar.x);
+    z = lerp(depthRange.x, depthRange.y, z);
+    float4 pp = mul(float4(In.vCoord, 1.0), P_Matrix);
+    pp.xyz /= pp.w;
+    pp.xy *= 0.5;
+    pp.xy += 0.5;
+    pp.z = z;
+//    pp.xyz = trunc(pp.xyz*light_headBufferSize)/light_headBufferSize;
+//    pp.xyz = pow(abs(pp.yyy), 2.2);
+//    return float4(pp.xxx,1.0);
+    uint3 crd = trunc(pp.xyz*(light_headBufferSize+0.0));
+    return light_headBuffer[crd]==0xFFFFFFFF ? float4(0.2,0.2,0.2,1) : float4(1,1,1,1);
+}
+
+float debugLines;
+
 PS_Output PS(VS_Output In) {
     PS_Output Out;
+    if (debugLines) {
+        Out.Color = float4(0.0,1.0,0.0,1.0);
+        return Out;
+    }
+    
     In.vNorm = normalize(In.vNorm);
     
     ModelMaterialDesc m = LoadMaterialDesc((int)In.MatIndex);
@@ -103,7 +126,7 @@ PS_Output PS(VS_Output In) {
     metallic = 1.0 - pow(abs(1.0-metallic), 32);
     
     float4 spec = {1,1,1,1};
-    float4 amb = 0.3;
+    float4 amb = 0.01;
     float3 lightColor = {1,1,1};
     float3 n = normalize(norm);
     float3 viewDir = normalize(-In.vCoord);
@@ -121,6 +144,10 @@ PS_Output PS(VS_Output In) {
     //float3 c = CookTorrance_GGX_sampled(n, viewDir, F0, diff.xyz, roughness)*LightInt;
 
     Out.Color = float4(tonemapReinhard(c), diff.a);
+    
+    float4 pp = mul(float4(In.vCoord, 1.0), P_Matrix);
+    Out.Color = Clustered_Phong(pp.xyz/pp.w, In.vCoord, n, viewDir, diff, spec, amb, 20.0);
+    //Out.Color = DebugTest(In);
 //    Out.Color = -In.vNorm.z;
     return Out;
 }

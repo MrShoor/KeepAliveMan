@@ -18,7 +18,7 @@ uses
   AppEvnts,
   Messages,
   {$EndIf}
-  avRes, avTypes, mutils, avCameraController, avModel, avMesh, avTexLoader,
+  avRes, avTypes, mutils, avCameraController, avModel, avMesh, avTexLoader, avLights,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus;
 
 const
@@ -26,6 +26,19 @@ const
   SHADERS_DIR = 'C:\MyProj\KeepAliveMan\shaders\!Out';
 
 type
+  TOnShadowPassGeometry = procedure (const APointLightMatrices: TPointLightMatrices) of object;
+
+  { TGeometryRenderer }
+
+  TGeometryRenderer = class(TInterfacedObject, IGeometryRenderer)
+  private
+    FOnShadowPassGeometry: TOnShadowPassGeometry;
+    procedure ShadowPassGeometry(const APointLightMatrices: TPointLightMatrices);
+    procedure DrawTransparentGeometry();
+  public
+    constructor Create(const AOnShadowPassGeometry: TOnShadowPassGeometry);
+  end;
+
   { TfrmMain }
 
   TfrmMain = class(TForm)
@@ -45,12 +58,20 @@ type
     FFBO : TavFrameBuffer;
 
     FProgModels: TavProgram;
+    FProgPointShadows: TavProgram;
     FModelsCollection: TavModelCollection;
     FModels: IavModelInstanceArr;
+    FModelSphere: IavModelInstance;
+
+    FRendererIntf: IGeometryRenderer;
+
+    FLightRenderer : TavLightRenderer;
 
     FMapIrradiance: TavTexture;
     FMapRadiance  : TavTexture;
     FHammersleyPts: TVec4Arr;
+
+    procedure ShadowPassGeometry(const APointLightMatrices: TPointLightMatrices);
   public
     {$IfDef FPC}
     procedure EraseBackground(DC: HDC); override;
@@ -66,6 +87,23 @@ var
   frmMain: TfrmMain;
 
 implementation
+
+{ TGeometryRenderer }
+
+procedure TGeometryRenderer.ShadowPassGeometry(const APointLightMatrices: TPointLightMatrices);
+begin
+  FOnShadowPassGeometry(APointLightMatrices);
+end;
+
+procedure TGeometryRenderer.DrawTransparentGeometry;
+begin
+
+end;
+
+constructor TGeometryRenderer.Create(const AOnShadowPassGeometry: TOnShadowPassGeometry);
+begin
+  FOnShadowPassGeometry := AOnShadowPassGeometry;
+end;
 
 {$IfnDef NoDCC}
   {$R *.dfm}
@@ -83,19 +121,40 @@ begin
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
+var
+  i: Integer;
 begin
+  FRendererIntf := TGeometryRenderer.Create({$IfDef FPC}@{$EndIf}ShadowPassGeometry);
+
   FMain := TavMainRender.Create(nil);
-  FMain.Projection.NearPlane := 0.1;
-  FMain.Projection.FarPlane := 1000;
+  FMain.Projection.NearPlane := 0.5;
+  FMain.Projection.FarPlane := 100;
   FMain.Camera.Eye := Vec(10,10,-10);
 
   FFBO := Create_FrameBuffer(FMain, [TTextureFormat.RGBA, TTextureFormat.D32f], [True, False]);
 
   FProgModels := TavProgram.Create(FMain);
   FProgModels.Load('avMesh', SHADERS_FROMRES, SHADERS_DIR);
+  FProgPointShadows := TavProgram.Create(FMain);
+  FProgPointShadows.Load('point_shadows', SHADERS_FROMRES, SHADERS_DIR);
 
   FModelsCollection := TavModelCollection.Create(FMain);
   FModels := FModelsCollection.ObtainModels(avMesh.LoadInstancesFromFile('models\test1.avm'));
+  for i := 0 to FModels.Count - 1 do
+    if FModels[i].ModelName = 'Icosphere' then
+    begin
+      FModelSphere := FModels[i];
+      FModels.DeleteWithSwap(i);
+      Break;
+    end;
+
+  FLightRenderer := TavLightRenderer.Create(FMain);
+  with FLightRenderer.AddPointLight() do
+  begin
+    Pos := Vec(0,0,0);
+    Radius := 15;
+    Color := Vec(1,1,1);
+  end;
 
   FMapIrradiance := TavTexture.Create(FMain);
   FMapIrradiance.TargetFormat := TTextureFormat.RGBA16f;
@@ -124,11 +183,19 @@ end;
 procedure TfrmMain.FormMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   FProgModels.Invalidate();
+  FLightRenderer.InvalidateShaders();
+  FMain.InvalidateWindow;
 end;
 
 procedure TfrmMain.FormPaint(Sender: TObject);
 begin
   DrawFrame;
+end;
+
+procedure TfrmMain.ShadowPassGeometry(const APointLightMatrices: TPointLightMatrices);
+begin
+  if FMain.ActiveProgram <> FProgPointShadows then
+    FProgPointShadows.Select();
 end;
 
 {$IfDef FPC}
@@ -142,6 +209,8 @@ procedure TfrmMain.RenderScene;
 begin
   FMain.States.DepthTest := True;
 
+  FLightRenderer.Render(FRendererIntf);
+
   FFBO.SetFrameRectFromWindow();
   FFBO.Select();
 
@@ -153,8 +222,24 @@ begin
   FProgModels.SetUniform('uIrradiance', FMapIrradiance, Sampler_Linear);
   FProgModels.SetUniform('uHammersleyPts', FHammersleyPts);
   FProgModels.SetUniform('uSamplesCount', Length(FHammersleyPts)*1.0);
+
+  FProgModels.SetUniform('depthRange', FMain.Projection.DepthRange);
+  FProgModels.SetUniform('planesNearFar', Vec(FMain.Projection.NearPlane, FMain.Projection.FarPlane));
+  FProgModels.SetUniform('light_headBufferSize', FLightRenderer.LightsHeadBuffer.Size*1.0);
+  FProgModels.SetUniform('light_headBuffer', FLightRenderer.LightsHeadBuffer, Sampler_NoFilter);
+  FProgModels.SetUniform('light_linkedList', FLightRenderer.LightsLinkedList);
+  FProgModels.SetUniform('light_list', FLightRenderer.LightsList);
+
+  FProgModels.SetUniform('debugLines', 0.0);
   FModelsCollection.Select;
+  FMain.States.Wireframe := False;
+  FMain.States.CullMode := cmBack;
   FModelsCollection.Draw(FModels);
+
+  FMain.States.Wireframe := True;
+  FMain.States.CullMode := cmNone;
+  FProgModels.SetUniform('debugLines', 1.0);
+  FModelsCollection.Draw(FModelSphere);
 
   FFBO.BlitToWindow();
 end;

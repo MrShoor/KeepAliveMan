@@ -11,6 +11,10 @@ object frmMain: TfrmMain
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = True
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnMouseDown = FormMouseDown
+  OnPaint = FormPaint
   PixelsPerInch = 96
   TextHeight = 13
   object ApplicationEvents: TApplicationEvents
